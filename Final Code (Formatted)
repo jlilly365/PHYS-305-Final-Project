@@ -1,0 +1,102 @@
+#include <stdio.h>
+#include <math.h>
+
+float RHS(int ieq, float R, float M, float P, float D)
+{
+  float dM = 0.0; //differential mass
+  float dP = 0.0; //differential pressure
+  float gamma = 2.0;  //exponent number for p = dens ^ gamma
+  float soft = 0.0000001; //keeps denominators from being 0
+ 
+  //both differential equations are dimensionless
+
+  //ieq = 0 is mass
+  if(ieq == 0)
+  {
+   dM = D * (R*R);
+   return dM;   
+  }
+
+  //ieq = 1 is pressure
+  else if(ieq == 1)
+    {
+      dP = -0.5 * ((M * pow(P,1.0/gamma)) / ((R*R) + soft)) * 
+	(1.0 + pow(P, (1.0 - (1.0 / gamma)))) * 
+	(1.0 + (((R*R) * P) / (M + soft))) / 
+	(1.0 - (M / (R + soft)));
+      return dP;
+    }
+}
+
+int main(void)
+{
+   
+  float k1[2] = {0.0, 0.185};  //mass, degen. pressure (outward) 
+  float k2[2] = {0.0, 0.0}; //mid values for everything above
+  float k3[2] = {0.0, 0.0}; // mid vals of the mid vals
+  float k4[2] = {0.0, 0.0}; //mid vals of the mid vals of the mid vals
+ 
+  float D = 0.43;  //density       
+  float R = 0.0;   //radius     
+  float gamma = 2.0;  //exponent number for p = dens ^ gamma  
+  float steps = 8192;	//number of step      
+  float dR = 4.0 / (float)steps;  //actual step amount
+  
+  int i = 0; //radius loop counter   
+  int j = 0; //equation loop counter              
+  int k = 0; //density loop counter                
+  int l, m, n;  //individual k counters                
+  
+  /*this loop allows us to vary the initial density
+  for(k = 1; k <= 500; k++)
+    {
+      R = 0.0;
+      k1[0] = 0.0;
+      k1[1] = D*D; */
+     
+  //radius goes from almost 0 to well beyond what should be the minimum radius  
+  for(i = 1; i <= steps ; i++) 
+	  {	     
+      //to calculate mass and degen pressure for each half step
+	    for(j = 0; j < 2; j++)
+	      {    
+	        k2[j] = k1[j] + (dR / 2.0) * RHS(j,R,k1[0],k1[1],D);
+	      } 
+      
+	    for(l = 0; l < 2; l++)
+	     { 
+	       k3[l] = k1[l] + (dR / 2.0) * RHS(l,R,k2[0],k2[1],D);
+	      }
+	    
+	    for(m = 0; m < 2; m++)
+	     {
+	       k4[m] = k1[m] + (dR / 2.0) * RHS(m,R,k3[0],k3[1],D);
+	     }
+
+	    for(n = 0; n < 2; n++)
+	     {
+	        k1[n] = k1[n] + dR * RHS(n,R,k4[0],k4[1],D);
+	      }
+  
+	    R = R + dR; //increase radius
+    
+	    D = pow(k1[1], (1.0/gamma)); //get density for updated radius
+
+	    if(isnan(D)) //keeps results from running away if density is nan
+	     {
+	      break;
+	    }
+
+	    /*printing values for graphs
+	    printf("%e %e\n", R, D);
+	    printf("%e %e\n", R, k1[0]);
+	    printf("%e %e\n", R, k1[1]);*/
+	  }
+
+   //printf("Density:%e\n", D);    
+   //D = (float)k * 0.01;
+  }
+
+  //the end :)
+  return 0;
+}
